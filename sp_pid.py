@@ -118,6 +118,10 @@ if __name__ == '__main__':
         actual_x = []
         actual_y = []
         actual_theta = []
+
+        desired_x = []
+        desired_y = []
+        desired_theta = []
         # iterate through all waypoints in text file
         for itr in range(num_points):
             log('itr: ' + str(itr))
@@ -139,6 +143,10 @@ if __name__ == '__main__':
             theta_dot_d = dtheta[itr]
 
             theta_dot_d = states[2] #assume no error for now (set theta desired to current theta so not trying to correct currently)
+
+            desired_x.append(x_d)
+            desired_y.append(y_d)
+            desired_theta.append(theta_d)
 
             log('got desired states:')
             log('x: ' + str(x_d))
@@ -175,6 +183,9 @@ if __name__ == '__main__':
         np.savetxt("actual_x.txt", actual_x, fmt='%.2f')
         np.savetxt("actual_y.txt", actual_y, fmt='%.2f')
         np.savetxt("actual_theta.txt", actual_theta, fmt='%.2f')
+        np.savetxt("desired_x.txt", desired_x, fmt='%.2f')
+        np.savetxt("desired_y.txt", desired_y, fmt='%.2f')
+        np.savetxt("desired_theta.txt", desired_theta, fmt='%.2f')
 
     except rospy.ROSInterruptException:
         pass
