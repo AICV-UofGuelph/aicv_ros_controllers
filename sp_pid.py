@@ -65,11 +65,12 @@ def controller_pub(u, pub):
     vel_msg.linear.z = 0
     vel_msg.angular.x = 0
     vel_msg.angular.y = 0
-    #vel_msg.angular.z = u[3]
+    #vel_msg.angular.z = u[2]
     vel_msg.angular.z = 0 ######## HARDCODE TO 0 (for now)
     pub.publish(vel_msg)
 
-df = pd.read_csv("./paths/waypoints_path_0.csv")
+#df = pd.read_csv("./paths/waypoints_path_0.csv")
+df = pd.read_csv("./paths/waypoints_path_0_1ms.csv")
 waypoints_x = df['x'].to_numpy()[0:]
 waypoints_y = df['y'].to_numpy()[0:]
 theta = df['theta'].to_numpy()[0:]
@@ -142,7 +143,7 @@ if __name__ == '__main__':
             y_dot_d = vel_y[itr]
             theta_dot_d = dtheta[itr]
 
-            theta_dot_d = states[2] #assume no error for now (set theta desired to current theta so not trying to correct currently)
+            #theta_dot_d = states[2] #assume no error for now (set theta desired to current theta so not trying to correct currently)
 
             desired_x.append(x_d)
             desired_y.append(y_d)
