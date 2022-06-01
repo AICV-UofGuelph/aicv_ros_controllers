@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-import imp
 import math
 import numpy as np
 import rospy
-from std_msgs.msg import String
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Twist
@@ -12,6 +10,7 @@ import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
 DEBUG = True # set true to print error messages
+FILE = pd.read_csv("./paths/world_3_path_3.csv")
 
 def log(s):
     if DEBUG:
@@ -25,9 +24,10 @@ def movebase_client():
     goal = MoveBaseGoal()
     goal.target_pose.header.frame_id = "robot_map"
     goal.target_pose.header.stamp = rospy.Time.now()
-    goal.target_pose.pose.position.x = -1
-    goal.target_pose.pose.position.y = 4.05
-    goal.target_pose.pose.orientation.z = 1.571
+    goal.target_pose.pose.position.x = FILE['x'].to_numpy()[0]
+    goal.target_pose.pose.position.y = FILE['y'].to_numpy()[0]
+    angle = FILE['theta'].to_numpy()[0]
+    (goal.target_pose.pose.orientation.x, goal.target_pose.pose.orientation.y, goal.target_pose.pose.orientation.z, goal.target_pose.pose.orientation.w) = (0.0000001,0.0000001,math.sin(angle/2), math.cos(angle/2))
 
     client.send_goal(goal)
     wait = client.wait_for_result()
@@ -65,31 +65,36 @@ def controller_pub(u, pub):
     vel_msg.linear.z = 0
     vel_msg.angular.x = 0
     vel_msg.angular.y = 0
-    #vel_msg.angular.z = u[2]
-    vel_msg.angular.z = 0 ######## HARDCODE TO 0 (for now)
+    vel_msg.angular.z = u[2]
+    # vel_msg.angular.z = 0 ######## HARDCODE TO 0 (for now)
     pub.publish(vel_msg)
 
-#df = pd.read_csv("./paths/waypoints_path_0.csv")
-df = pd.read_csv("./paths/waypoints_path_0_1ms.csv")
-waypoints_x = df['x'].to_numpy()[0:]
-waypoints_y = df['y'].to_numpy()[0:]
-theta = df['theta'].to_numpy()[0:]
-vel_x = df['x_dot'].to_numpy()[0:]
-vel_y = df['y_dot'].to_numpy()[0:]
-dtheta = df['theta_dot'].to_numpy()[0:]
+def linear_sat(x, val=0.4):
+    return min(val, max(-val, x))
+
+def theta_sat(x, val=0.1):
+    return min(val, max(-val, x))
+
+
+waypoints_x = FILE['x'].to_numpy()[0:]
+waypoints_y = FILE['y'].to_numpy()[0:]
+theta = FILE['theta'].to_numpy()[0:]
+vel_x = FILE['x_dot'].to_numpy()[0:]
+vel_y = FILE['y_dot'].to_numpy()[0:]
+dtheta = FILE['theta_dot'].to_numpy()[0:]
 num_points = np.shape(waypoints_x)[0]
 
 log('num points: ' + str(num_points))
 
 # define gains
-kp_x = -0.4 # x gains
-kd_x = -0.2
+ki_x = 5.0 # x gains
+kp_x = 0.2
 
-kp_y = -0.4 # y gains
-kd_y = -0.2
+ki_y = 5.0 # y gains
+kp_y = 0.2
 
-kp_theta = 0.1 # theta gains
-kd_theta = 0.2
+ki_theta = 0.05 # theta gains
+kp_theta = 1.0
 
 
 if __name__ == '__main__':
@@ -106,7 +111,7 @@ if __name__ == '__main__':
             rospy.loginfo("Goal execution done!")
 
         #state_publisher = rospy.Publisher("/odometry/filtered_map", Odometry, queue_size=10)
-        desired_state_publisher = rospy.Publisher('/pub_cmd_vel', Twist, queue_size=10)
+        desired_state_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
         log('pub initialized')
         #get current robot states
@@ -162,9 +167,26 @@ if __name__ == '__main__':
             log('error:')
             log(error)
 
-            control_x = error[0]*kp_x + error[3]*kd_x #control signal x
-            control_y = error[1]*kp_y + error[4]*kd_y #control signal y
-            control_theta = error[2]*kp_theta + error[5]*kd_theta #control signal theta
+            control_x = linear_sat(error[0]*ki_x + error[3]*kp_x) #control signal x
+            control_y = linear_sat(error[1]*ki_y + error[4]*kp_y) #control signal y
+            control_theta = theta_sat(error[2]*ki_theta + error[5]*kp_theta) #control signal theta
+
+            # threshold_coords = 0.5
+            # if control_x > threshold_coords:
+            #     control_x = threshold_coords
+            # elif control_x < -threshold_coords:
+            #     control_x = -threshold_coords
+
+            # if control_y > threshold_coords:
+            #     control_y = threshold_coords
+            # elif control_y < -threshold_coords:
+            #     control_y = -threshold_coords
+
+            # threshold_theta = 0.2
+            # if control_theta > threshold_theta:
+            #     control_theta = threshold_theta
+            # elif control_theta < -threshold_theta:
+            #     control_theta = -threshold_theta
 
             log('control signals:')
             log(control_x)
