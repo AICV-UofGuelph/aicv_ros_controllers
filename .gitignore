@@ -145,3 +145,9 @@ paths/waypoints_0_smooth_angles.csv
 paths/world_3_path_2.csv
 paths/world_3_path_3.csv
 paths/world_3_path.csv
+plots/*
+map_20x20/*
+test_path_1/*
+test_path_2/*
+test_path_3/*
+waypoints/*
