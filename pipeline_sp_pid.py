@@ -112,7 +112,7 @@ if __name__ == '__main__':
         rospy.init_node('PID_Control', anonymous=True)
         log('node initialized')
 
-        #move robot to start point (hardcoded for now)
+        #move robot to start point
         result = movebase_client()
 
         if result:
@@ -136,6 +136,7 @@ if __name__ == '__main__':
         desired_x = []
         desired_y = []
         desired_theta = []
+        
         # iterate through all waypoints in text file
         for itr in range(num_points):
             log('itr: ' + str(itr))
@@ -155,8 +156,6 @@ if __name__ == '__main__':
             x_dot_d = vel_x[itr]
             y_dot_d = vel_y[itr]
             theta_dot_d = dtheta[itr]
-
-            #theta_dot_d = states[2] #assume no error for now (set theta desired to current theta so not trying to correct currently)
 
             desired_x.append(x_d)
             desired_y.append(y_d)
@@ -185,7 +184,6 @@ if __name__ == '__main__':
             log(control_theta)
 
             controller_pub([control_x, control_y, control_theta], desired_state_publisher)
-            #controller_pub([control_x, control_y], desired_state_publisher)
 
             t2 = rospy.Time.now().to_sec()
             elapsed_time = t2 - t1
@@ -194,6 +192,11 @@ if __name__ == '__main__':
         
         controller_pub([0, 0, 0], desired_state_publisher) # stop when done
         log('done!')
+        actual_path_arr = list(zip(actual_x, actual_y))
+        desired_path_arr = list(zip(desired_x, desired_y))
+        mse = np.square(np.subtract(actual_path_arr, desired_path_arr)).mean()
+        rmse = math.sqrt(mse)
+        log("RMSE: " + str(round(rmse, 4)))
         np.savetxt("actual_x.txt", actual_x, fmt='%.2f')
         np.savetxt("actual_y.txt", actual_y, fmt='%.2f')
         np.savetxt("actual_theta.txt", actual_theta, fmt='%.2f')
