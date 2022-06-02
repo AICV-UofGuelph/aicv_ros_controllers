@@ -6,7 +6,10 @@ import numpy as np
 # CONSTANTS:
 
 DESIRED_VEL = 0.4
-TIME_STEP = 0.2
+if len(sys.argv) > 2:
+    TIME_STEP = float(sys.argv[2])
+else:
+    TIME_STEP = 0.2
 
 
 # CLASSES:
@@ -157,19 +160,44 @@ class WaypointList():
 
 def main():
 
-    if len(sys.argv) != 4:
-        print(str(sys.argv[0]) + " requires 3 arguments --> path_file map_file yaml_file")
+    # checking for proper input
+    if len(sys.argv) < 2 or len(os.listdir(sys.argv[1])) < 3:
+        print("Proper usage: python "+str(sys.argv[0])+" file_folder [time step]")
         exit()
 
-    # variables:
-    path_file = sys.argv[1]
-    map_file = sys.argv[2]
-    yaml_file = sys.argv[3]
+    # getting path file, map file, yaml file
+    path_file = None
+    map_file = None
+    yaml_file = None
+    file_folder = sys.argv[1]
+
+    for filename in os.listdir(file_folder):
+        filepath = os.path.join(file_folder, filename)
+        if os.path.isfile(filepath):
+            if ".yaml" == filepath[-5:]:
+                yaml_file = filepath
+            elif ".txt" == filepath[-4:]:
+                with open(filepath) as file:
+                    if len(file.readline().split()) > 1:        # if number of 'words' on first line is greater than 1
+                        map_file = filepath
+                    else:
+                        path_file = filepath
+                file.close()
+
+    if path_file == None or map_file == None or yaml_file == None:
+        print("Please ensure your folder contains a path file, a map file, and a yaml file")
+        exit()
+
+    # getting map name:
+    map_name = map_file.rsplit('.', 1)[0]
+    if '/' in map_name:
+        map_name = map_name.rsplit('/', 1)[1]
 
     # get map_size info
     with open(map_file) as file:
         vals = file.readline().rstrip().rsplit(' ')                     # gets string array of [size_x, size_y]
         map_size = (int(vals[0]), int(vals[1]))
+    file.close()
 
     # load map:
     flat_map = np.loadtxt(map_file, skiprows=2)                         # skips line with map size
@@ -193,7 +221,8 @@ def main():
     dir_name = "waypoints/"
     if not os.path.exists(dir_name):                                    # if waypoint folder doesn't exist, create it
         os.mkdir(dir_name)
-    dir_name = str(dir_name)+str(map_file.rsplit('/', 1)[1].rsplit('.', 1)[0])+"/"               
+
+    dir_name = dir_name+map_name+"/"      
     if not os.path.exists(dir_name):                                    # if waypoint folder for this map doesn't exist, create it
         os.mkdir(dir_name)
 
@@ -201,7 +230,7 @@ def main():
     path = Path(path_file, resolution)
 
     # create waypoints file:
-    file_name = str(dir_name)+"waypoints.csv"
+    file_name = dir_name+"waypoints.csv"
     file = open(file_name, "w")
     file.write("x,y,theta,x_dot,y_dot,theta_dot\n")
     for j in path.waypoints.list:
@@ -214,17 +243,10 @@ def main():
     # saving image of path:
     plt.imshow(map)
     plt.scatter(path.x_vals, path.y_vals)
-    plt.savefig(str(dir_name)+"waypoints.png", bbox_inches='tight')
+    plt.savefig(dir_name+"waypoints.png", bbox_inches='tight')
     plt.clf()                                                           # clears current figure
 
-    # print(f"Created {len(path.waypoints.list)} waypoints.")
-    
-    # # displaying paths
-    # plt.imshow(map)
-    # plt.plot(path.x_vals, path.y_vals)
-    # plt.show()
-
-    sys.stdout.write(str(file_name)+" "+str(TIME_STEP))
+    sys.stdout.write(file_name+" "+str(TIME_STEP))
 
 if __name__ == '__main__':
     main()

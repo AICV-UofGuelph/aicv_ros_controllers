@@ -9,13 +9,18 @@ import pandas as pd
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
-if len(sys.argv) != 3:
-    print(str(sys.argv[0])+" requires 2 arguments --> csv_file time_step")
-    exit()
-
 DEBUG = True                    # set true to print error messages
+
+# getting FILE and DT constants:
+if len(sys.argv) < 2:
+    print("Proper usage: python "+str(sys.argv[0])+" csv_file [time step]")
+    exit()
 FILE = pd.read_csv(sys.argv[1])
-DT = float(sys.argv[2])                # desired controller loop time [s]
+
+if len(sys.argv) > 2:
+    DT = float(sys.argv[2])                # desired controller loop time [s]
+else:
+    DT = 0.2
 
 def log(s):
     if DEBUG:
@@ -89,7 +94,7 @@ vel_y = FILE['y_dot'].to_numpy()[0:]
 dtheta = FILE['theta_dot'].to_numpy()[0:]
 num_points = np.shape(waypoints_x)[0]
 
-log('num points: ' + str(num_points))
+log('time step: ' + str(DT) + '\nnum points: ' + str(num_points))
 
 # define gains
 ki_x = 5.0 # x gains
