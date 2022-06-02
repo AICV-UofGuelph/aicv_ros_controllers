@@ -230,7 +230,8 @@ def main():
     path = Path(path_file, resolution)
 
     # create waypoints file:
-    file_name = dir_name+"waypoints.csv"
+    file_num = int(len(os.listdir(dir_name))/2)
+    file_name = dir_name+"waypoints_"+str(file_num)+".csv"
     file = open(file_name, "w")
     file.write("x,y,theta,x_dot,y_dot,theta_dot\n")
     for j in path.waypoints.list:
@@ -243,8 +244,8 @@ def main():
     # saving image of path:
     plt.imshow(map)
     plt.scatter(path.x_vals, path.y_vals)
-    plt.savefig(dir_name+"waypoints.png", bbox_inches='tight')
-    plt.clf()                                                           # clears current figure
+    plt.savefig(dir_name+"waypoints_"+str(file_num)+".png", bbox_inches='tight')
+    plt.clf()         # clears current figure
 
     sys.stdout.write(file_name+" "+str(TIME_STEP))
 
