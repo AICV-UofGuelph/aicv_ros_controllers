@@ -1,8 +1,10 @@
 #plot the acutal robot positions
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+# load data:
 x = np.loadtxt("actual_x.txt")
 y = np.loadtxt("actual_y.txt")
 
@@ -20,21 +22,47 @@ x_vals_theta = []
 for i in range(len(theta_des)):
     x_vals_theta.append(i)
 
-plt.plot(x, y)
-plt.plot(x_des, y_des)
+# create plots folder:
+dir_name = "plots/"
+if not os.path.exists(dir_name):
+    os.mkdir(dir_name)
+
+# create/show/save plots:
+plt.plot(x, y, label="Actual")
+plt.plot(x_des, y_des, label="Desired")
+plt.legend()
+plt.xlabel("x Value")
+plt.ylabel("y Value")
+plt.title("Actual vs. Desired Path")
+plt.savefig(dir_name+"path.png", bbox_inches='tight')
 plt.show()
 
 plt.clf()
-plt.plot(x_vals_coords, x)
-plt.plot(x_vals_coords, x_des)
+plt.plot(x_vals_coords, x, label="Actual")
+plt.plot(x_vals_coords, x_des, label="Desired")
+plt.legend()
+plt.xlabel("Time")
+plt.ylabel("x Value")
+plt.title("Actual vs. Desired x Co-ordinates")
+plt.savefig(dir_name+"x_coords.png", bbox_inches='tight')
 plt.show()
 
 plt.clf()
-plt.plot(x_vals_coords, y)
-plt.plot(x_vals_coords, y_des)
+plt.plot(x_vals_coords, y, label="Actual")
+plt.plot(x_vals_coords, y_des, label="Desired")
+plt.legend()
+plt.xlabel("Time")
+plt.ylabel("y Value")
+plt.title("Actual vs. Desired y Co-ordinates")
+plt.savefig(dir_name+"y_coords.png", bbox_inches='tight')
 plt.show()
 
 plt.clf()
-plt.plot(x_vals_theta, theta_des)
-plt.plot(x_vals_theta, theta_acc)
+plt.plot(x_vals_theta, theta_acc, label="Actual", zorder=2)
+plt.plot(x_vals_theta, theta_des, label="Desired", zorder=1)
+plt.legend()
+plt.xlabel("Time")
+plt.ylabel("Theta")
+plt.title("Actual vs. Desired Theta Values")
+plt.savefig(dir_name+"theta.png", bbox_inches='tight')
 plt.show()
