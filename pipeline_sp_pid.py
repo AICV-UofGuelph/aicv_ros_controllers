@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import math
+import sys, math
 import numpy as np
 import rospy
 from nav_msgs.msg import Odometry
@@ -9,8 +9,18 @@ import pandas as pd
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
-DEBUG = True # set true to print error messages
-FILE = pd.read_csv("./paths/world_3_path_3.csv")
+DEBUG = True                    # set true to print error messages
+
+# getting FILE and DT constants:
+if len(sys.argv) < 2:
+    print("Proper usage: python "+str(sys.argv[0])+" csv_file [time step]")
+    exit()
+FILE = pd.read_csv(sys.argv[1])
+
+if len(sys.argv) > 2:
+    DT = float(sys.argv[2])                # desired controller loop time [s]
+else:
+    DT = 0.2
 
 def log(s):
     if DEBUG:
@@ -84,7 +94,7 @@ vel_y = FILE['y_dot'].to_numpy()[0:]
 dtheta = FILE['theta_dot'].to_numpy()[0:]
 num_points = np.shape(waypoints_x)[0]
 
-log('num points: ' + str(num_points))
+log('time step: ' + str(DT) + '\nnum points: ' + str(num_points))
 
 # define gains
 ki_x = 5.0 # x gains
@@ -101,10 +111,8 @@ if __name__ == '__main__':
     try:
         rospy.init_node('PID_Control', anonymous=True)
         log('node initialized')
-        dt = 0.2 #desired controller loop time [s]
 
-
-        #move robot to start point (hardcoded for now)
+        #move robot to start point
         result = movebase_client()
 
         if result:
@@ -128,6 +136,7 @@ if __name__ == '__main__':
         desired_x = []
         desired_y = []
         desired_theta = []
+        
         # iterate through all waypoints in text file
         for itr in range(num_points):
             log('itr: ' + str(itr))
@@ -147,8 +156,6 @@ if __name__ == '__main__':
             x_dot_d = vel_x[itr]
             y_dot_d = vel_y[itr]
             theta_dot_d = dtheta[itr]
-
-            #theta_dot_d = states[2] #assume no error for now (set theta desired to current theta so not trying to correct currently)
 
             desired_x.append(x_d)
             desired_y.append(y_d)
@@ -171,38 +178,25 @@ if __name__ == '__main__':
             control_y = linear_sat(error[1]*ki_y + error[4]*kp_y) #control signal y
             control_theta = theta_sat(error[2]*ki_theta + error[5]*kp_theta) #control signal theta
 
-            # threshold_coords = 0.5
-            # if control_x > threshold_coords:
-            #     control_x = threshold_coords
-            # elif control_x < -threshold_coords:
-            #     control_x = -threshold_coords
-
-            # if control_y > threshold_coords:
-            #     control_y = threshold_coords
-            # elif control_y < -threshold_coords:
-            #     control_y = -threshold_coords
-
-            # threshold_theta = 0.2
-            # if control_theta > threshold_theta:
-            #     control_theta = threshold_theta
-            # elif control_theta < -threshold_theta:
-            #     control_theta = -threshold_theta
-
             log('control signals:')
             log(control_x)
             log(control_y)
             log(control_theta)
 
             controller_pub([control_x, control_y, control_theta], desired_state_publisher)
-            #controller_pub([control_x, control_y], desired_state_publisher)
 
             t2 = rospy.Time.now().to_sec()
             elapsed_time = t2 - t1
-            rate = rospy.Rate(1/(dt-elapsed_time)) 
+            rate = rospy.Rate(1/(DT-elapsed_time)) 
             rate.sleep()
         
         controller_pub([0, 0, 0], desired_state_publisher) # stop when done
         log('done!')
+        actual_path_arr = list(zip(actual_x, actual_y))
+        desired_path_arr = list(zip(desired_x, desired_y))
+        mse = np.square(np.subtract(actual_path_arr, desired_path_arr)).mean()
+        rmse = math.sqrt(mse)
+        log("RMSE: " + str(round(rmse, 4)))
         np.savetxt("actual_x.txt", actual_x, fmt='%.2f')
         np.savetxt("actual_y.txt", actual_y, fmt='%.2f')
         np.savetxt("actual_theta.txt", actual_theta, fmt='%.2f')

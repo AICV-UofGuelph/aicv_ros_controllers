@@ -1,0 +1,1 @@
+pipeline_create_waypoints.py requires 3 arguments --> path_file map_file yaml_file
