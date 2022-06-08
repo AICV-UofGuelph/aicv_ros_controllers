@@ -151,3 +151,15 @@ test_path_1/*
 test_path_2/*
 test_path_3/*
 waypoints/*
+map_40x40_dense/40x40_world_dense.world
+map_40x40_dense/map_40x40_dense.pgm
+map_40x40_dense/map_40x40_dense.txt
+map_40x40_dense/map_40x40_dense.yaml
+map_40x40_dense/path_0/path.png
+map_40x40_dense/path_0/theta.png
+map_40x40_dense/path_0/x_coords.png
+map_40x40_dense/path_0/y_coords.png
+map_40x40_dense/path_1(first try)/path.png
+map_40x40_dense/path_1(first try)/theta.png
+map_40x40_dense/path_1(first try)/x_coords.png
+map_40x40_dense/path_1(first try)/y_coords.png
