@@ -132,34 +132,12 @@ dmypy.json
 .vscode/browse.vc.db
 
 # test files
-paths/faster_path_1.csv
-paths/faster_path.csv
-paths/new_waypoints_3.csv
-paths/proper_dx_dy_smooth.csv
-paths/proper_dx_dy.csv
-paths/test.csv
-paths/waypoints_0_smooth_angles_2 (copy).csv
-paths/waypoints_0_smooth_angles_2.csv
-paths/waypoints_0_smooth_angles_3.csv
-paths/waypoints_0_smooth_angles.csv
-paths/world_3_path_2.csv
-paths/world_3_path_3.csv
-paths/world_3_path.csv
+paths/*
 plots/*
 map_20x20/*
 test_path_1/*
 test_path_2/*
 test_path_3/*
 waypoints/*
-map_40x40_dense/40x40_world_dense.world
-map_40x40_dense/map_40x40_dense.pgm
-map_40x40_dense/map_40x40_dense.txt
-map_40x40_dense/map_40x40_dense.yaml
-map_40x40_dense/path_0/path.png
-map_40x40_dense/path_0/theta.png
-map_40x40_dense/path_0/x_coords.png
-map_40x40_dense/path_0/y_coords.png
-map_40x40_dense/path_1(first try)/path.png
-map_40x40_dense/path_1(first try)/theta.png
-map_40x40_dense/path_1(first try)/x_coords.png
-map_40x40_dense/path_1(first try)/y_coords.png
+map_40x40_dense/*
+run_data/*

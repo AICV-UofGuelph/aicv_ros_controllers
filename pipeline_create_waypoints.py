@@ -27,7 +27,7 @@ class Path():
             self.add_points(res)                                   # updates self.vals
 
             # creating waypoints:
-            self.waypoints = WaypointList(self.vals)
+            self.waypoints = WaypointList(self.vals, res)
 
     def create_path(self):
         flat_path = np.loadtxt(self.filename)
@@ -54,7 +54,7 @@ class Path():
         x2, y2 = end
 
         # determining number of points being added between given coords
-        distance = math.sqrt((x2-x1)**2 + (y2-y1)**2)*resolution              # in metres? #TODO: resolution should be a param in this equation
+        distance = math.sqrt((x2-x1)**2 + (y2-y1)**2)*resolution              # in metres
 
         if distance <= DESIRED_VEL*TIME_STEP:                               # if only original point must be added
             num_added_points = 1                                            # accounts for addition of original point (x1, y1)
@@ -96,12 +96,12 @@ class WaypointList():
             self.dy = 0
             self.dx = 0
 
-    def __init__(self, vals):
+    def __init__(self, vals, resolution):
         self.list = []
         for i in range(len(vals)):
             self.list.append(self.Waypoint(vals[i]))
         self.remove_duplicates()
-        self.calc_thetas()
+        self.calc_thetas(resolution)
         self.calc_theta_dot()
         self.calc_dx_dy()
 
@@ -113,15 +113,17 @@ class WaypointList():
                 self.list.pop(i-skipped)
                 skipped += 1
 
-    def calc_thetas(self):
+    def calc_thetas(self, resolution):
         for i in range(len(self.list)):
             if i == len(self.list) - 1:     # i.e. no next point
                 self.list[i].theta = self.list[i-1].theta
+                self.list[i].dis_to_next = 0
                 break
             else:
                 curr_point, next_point = self.list[i], self.list[i+1]
                 x1, y1 = curr_point.x, curr_point.y
                 x2, y2 = next_point.x, next_point.y
+
                 if x1 == x2:
                     if y2 > y1:                                 # note this might not work when y axis is reversed
                         theta = math.radians(-90)
@@ -142,6 +144,7 @@ class WaypointList():
 
 
                 curr_point.theta = theta
+                curr_point.dis_to_next = math.sqrt((x2-x1)**2 + (y2-y1)**2)*resolution
 
     def calc_theta_dot(self):
         for i in range(1, len(self.list)):
@@ -152,8 +155,10 @@ class WaypointList():
 
     def calc_dx_dy(self):
         for waypoint in self.list:
-            waypoint.dx = DESIRED_VEL*math.cos(waypoint.theta)
-            waypoint.dy = DESIRED_VEL*math.sin(waypoint.theta)
+            new_vel = waypoint.dis_to_next/TIME_STEP
+            # new_vel = DESIRED_VEL
+            waypoint.dx = new_vel*math.cos(waypoint.theta)
+            waypoint.dy = new_vel*math.sin(waypoint.theta)
 
 
 # MAIN:

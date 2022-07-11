@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys, math
+import os, sys, math
 import numpy as np
 import rospy
 from nav_msgs.msg import Odometry
@@ -8,6 +8,7 @@ from geometry_msgs.msg import Twist
 import pandas as pd
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+import matplotlib.pyplot as plt
 
 DEBUG = True                    # set true to print error messages
 
@@ -192,17 +193,82 @@ if __name__ == '__main__':
         
         controller_pub([0, 0, 0], desired_state_publisher) # stop when done
         log('done!')
+
+        # creating run_data directory:
+        dir_name = "run_data/"
+        if not os.path.exists(dir_name):                                    # if run_data folder doesn't exist, create it
+            os.mkdir(dir_name)
+
+        # counting num of directories in run_data:
+        num_dirs = 0
+        for base, dirs, files in os.walk(dir_name):
+            for directories in dirs:
+                num_dirs += 1
+
+        # creating specific run folder:
+        dir_name = dir_name+"run_"+str(num_dirs)+"/"
+        os.mkdir(dir_name)
+
         actual_path_arr = list(zip(actual_x, actual_y))
         desired_path_arr = list(zip(desired_x, desired_y))
         mse = np.square(np.subtract(actual_path_arr, desired_path_arr)).mean()
         rmse = math.sqrt(mse)
         log("RMSE: " + str(round(rmse, 4)))
-        np.savetxt("actual_x.txt", actual_x, fmt='%.2f')
-        np.savetxt("actual_y.txt", actual_y, fmt='%.2f')
-        np.savetxt("actual_theta.txt", actual_theta, fmt='%.2f')
-        np.savetxt("desired_x.txt", desired_x, fmt='%.2f')
-        np.savetxt("desired_y.txt", desired_y, fmt='%.2f')
-        np.savetxt("desired_theta.txt", desired_theta, fmt='%.2f')
+        np.savetxt(dir_name+"rmse.txt", [rmse], fmt='%.4f')
+        np.savetxt(dir_name+"actual_x.txt", actual_x, fmt='%.2f')
+        np.savetxt(dir_name+"actual_y.txt", actual_y, fmt='%.2f')
+        np.savetxt(dir_name+"actual_theta.txt", actual_theta, fmt='%.2f')
+        np.savetxt(dir_name+"desired_x.txt", desired_x, fmt='%.2f')
+        np.savetxt(dir_name+"desired_y.txt", desired_y, fmt='%.2f')
+        np.savetxt(dir_name+"desired_theta.txt", desired_theta, fmt='%.2f')
+
+        # create/show/save plots:
+        x_vals_coords = []
+        for i in range(len(actual_x)):
+            x_vals_coords.append(i)
+
+        x_vals_theta = []
+        for i in range(len(desired_theta)):
+            x_vals_theta.append(i)
+
+        plt.plot(actual_x, actual_y, label="Actual")
+        plt.plot(desired_x, desired_y, label="Desired")
+        plt.legend()
+        plt.xlabel("x Value")
+        plt.ylabel("y Value")
+        plt.title("Actual vs. Desired Path")
+        plt.savefig(dir_name+"path.png", bbox_inches='tight')
+        # plt.show()
+
+        plt.clf()
+        plt.plot(x_vals_coords, actual_x, label="Actual")
+        plt.plot(x_vals_coords, desired_x, label="Desired")
+        plt.legend()
+        plt.xlabel("Time")
+        plt.ylabel("x Value")
+        plt.title("Actual vs. Desired x Co-ordinates")
+        plt.savefig(dir_name+"x_coords.png", bbox_inches='tight')
+        # plt.show()
+
+        plt.clf()
+        plt.plot(x_vals_coords, actual_y, label="Actual")
+        plt.plot(x_vals_coords, desired_y, label="Desired")
+        plt.legend()
+        plt.xlabel("Time")
+        plt.ylabel("y Value")
+        plt.title("Actual vs. Desired y Co-ordinates")
+        plt.savefig(dir_name+"y_coords.png", bbox_inches='tight')
+        # plt.show()
+
+        plt.clf()
+        plt.plot(x_vals_theta, actual_theta, label="Actual", zorder=2)
+        plt.plot(x_vals_theta, desired_theta, label="Desired", zorder=1)
+        plt.legend()
+        plt.xlabel("Time")
+        plt.ylabel("Theta")
+        plt.title("Actual vs. Desired Theta Values")
+        plt.savefig(dir_name+"theta.png", bbox_inches='tight')
+        # plt.show()
 
     except rospy.ROSInterruptException:
         pass
