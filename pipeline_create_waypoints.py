@@ -1,15 +1,37 @@
-import sys, math, os, yaml
+import sys, math, os
+import getopt, yaml
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 # CONSTANTS:
 
+# checking for proper input
+if len(sys.argv) < 2 or len(sys.argv) > 6:
+    print("Proper usage: python "+str(sys.argv[0])+" file_folder [-t timestep] [-f folder_name]")
+    exit()
+if len(os.listdir(sys.argv[1])) < 3:
+    print("Folder '"+str(sys.argv[1])+"' must contain at least 3 files (map file, yaml file, path file).")
+    exit()
+
+# getting constant values:
 DESIRED_VEL = 0.4
-if len(sys.argv) > 2:
-    TIME_STEP = float(sys.argv[2])
-else:
-    TIME_STEP = 0.2
+FILE_FOLDER = sys.argv[1]
+
+options, arguments = getopt.getopt(                 # code from https://realpython.com/python-command-line-arguments/#getopt
+    sys.argv[2:],
+    't:f:',
+    ["timestep=", "folder_name="])
+dt = 0.2
+folder_name = None
+for o, a in options:
+    if o in ("-t", "--timestep"):
+        dt = float(a)
+    if o in ("-f", "--folder_name"):
+        folder_name = a
+
+TIME_STEP = dt
+FOLDER_NAME = folder_name
 
 
 # CLASSES:
@@ -165,16 +187,11 @@ class WaypointList():
 
 def main():
 
-    # checking for proper input
-    if len(sys.argv) < 2 or len(os.listdir(sys.argv[1])) < 3:
-        print("Proper usage: python "+str(sys.argv[0])+" file_folder [time step]")
-        exit()
-
     # getting path file, map file, yaml file
     path_file = None
     map_file = None
     yaml_file = None
-    file_folder = sys.argv[1]
+    file_folder = FILE_FOLDER
 
     for filename in os.listdir(file_folder):
         filepath = os.path.join(file_folder, filename)
@@ -252,7 +269,10 @@ def main():
     plt.savefig(dir_name+"waypoints_"+str(file_num)+".png", bbox_inches='tight')
     plt.clf()         # clears current figure
 
-    sys.stdout.write(file_name+" "+str(TIME_STEP))
+    if FOLDER_NAME == None:
+        sys.stdout.write(file_name+" -t "+str(TIME_STEP))
+    else:
+        sys.stdout.write(file_name+" -t "+str(TIME_STEP)+" -f "+str(FOLDER_NAME))
 
 if __name__ == '__main__':
     main()

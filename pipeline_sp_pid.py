@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os, sys, math
+import getopt, shutil
 import numpy as np
 import rospy
 from nav_msgs.msg import Odometry
@@ -12,17 +13,29 @@ import matplotlib.pyplot as plt
 
 DEBUG = True                    # set true to print error messages
 
-# getting FILE and DT constants:
-if len(sys.argv) < 2:
-    print("Proper usage: python "+str(sys.argv[0])+" csv_file [time step]")
+# checking for proper num of command line args:
+if len(sys.argv) < 2 or len(sys.argv) > 6:
+    print("Proper usage: python "+str(sys.argv[0])+" csv_file [-t timestep] [-f folder_name]")
     exit()
+
+# getting FILE, DT, FOLDER_NAME:
 FILE = pd.read_csv(sys.argv[1])
 
-if len(sys.argv) > 2:
-    DT = float(sys.argv[2])                # desired controller loop time [s]
-else:
-    DT = 0.2
+options, arguments = getopt.getopt(                 # code from https://realpython.com/python-command-line-arguments/#getopt
+    sys.argv[2:],
+    't:f:',
+    ["timestep=", "folder_name="])
+dt = 0.2
+folder_name = None
+for o, a in options:
+    if o in ("-t", "--timestep"):
+        dt = float(a)
+    if o in ("-f", "--folder_name"):
+        folder_name = a
+DT = dt
+FOLDER_NAME = folder_name
 
+# FUNCTIONS:
 def log(s):
     if DEBUG:
         print(s)
@@ -86,7 +99,7 @@ def linear_sat(x, val=0.4):
 def theta_sat(x, val=0.1):
     return min(val, max(-val, x))
 
-
+# MAIN:
 waypoints_x = FILE['x'].to_numpy()[0:]
 waypoints_y = FILE['y'].to_numpy()[0:]
 theta = FILE['theta'].to_numpy()[0:]
@@ -196,17 +209,22 @@ if __name__ == '__main__':
 
         # creating run_data directory:
         dir_name = "run_data/"
-        if not os.path.exists(dir_name):                                    # if run_data folder doesn't exist, create it
+        if not os.path.exists(dir_name):
             os.mkdir(dir_name)
 
-        # counting num of directories in run_data:
-        num_dirs = 0
-        for base, dirs, files in os.walk(dir_name):
-            for directories in dirs:
-                num_dirs += 1
-
         # creating specific run folder:
-        dir_name = dir_name+"run_"+str(num_dirs)+"/"
+        if FOLDER_NAME == None:
+            # counting num of directories in run_data:
+            num_dirs = 0
+            for base, dirs, files in os.walk(dir_name):
+                for directories in dirs:
+                    num_dirs += 1
+            dir_name = dir_name+"run_"+str(num_dirs)+"/"
+        else:
+            dir_name = dir_name+FOLDER_NAME+"/"
+
+        if os.path.exists(dir_name):
+            shutil.rmtree(dir_name)
         os.mkdir(dir_name)
 
         actual_path_arr = list(zip(actual_x, actual_y))
@@ -222,7 +240,7 @@ if __name__ == '__main__':
         np.savetxt(dir_name+"desired_y.txt", desired_y, fmt='%.2f')
         np.savetxt(dir_name+"desired_theta.txt", desired_theta, fmt='%.2f')
 
-        # create/show/save plots:
+        # create/save plots:
         x_vals_coords = []
         for i in range(len(actual_x)):
             x_vals_coords.append(i)
@@ -238,7 +256,6 @@ if __name__ == '__main__':
         plt.ylabel("y Value")
         plt.title("Actual vs. Desired Path")
         plt.savefig(dir_name+"path.png", bbox_inches='tight')
-        # plt.show()
 
         plt.clf()
         plt.plot(x_vals_coords, actual_x, label="Actual")
@@ -248,7 +265,6 @@ if __name__ == '__main__':
         plt.ylabel("x Value")
         plt.title("Actual vs. Desired x Co-ordinates")
         plt.savefig(dir_name+"x_coords.png", bbox_inches='tight')
-        # plt.show()
 
         plt.clf()
         plt.plot(x_vals_coords, actual_y, label="Actual")
@@ -258,7 +274,6 @@ if __name__ == '__main__':
         plt.ylabel("y Value")
         plt.title("Actual vs. Desired y Co-ordinates")
         plt.savefig(dir_name+"y_coords.png", bbox_inches='tight')
-        # plt.show()
 
         plt.clf()
         plt.plot(x_vals_theta, actual_theta, label="Actual", zorder=2)
@@ -268,7 +283,6 @@ if __name__ == '__main__':
         plt.ylabel("Theta")
         plt.title("Actual vs. Desired Theta Values")
         plt.savefig(dir_name+"theta.png", bbox_inches='tight')
-        # plt.show()
 
     except rospy.ROSInterruptException:
         pass
