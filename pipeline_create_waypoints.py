@@ -155,14 +155,15 @@ class WaypointList():
                         # theta = math.radians(-90)
                 else:
 
-                    theta = -math.atan((y2-y1)/(x2-x1))
+                    # theta = -math.atan((y2-y1)/(x2-x1))
+                    theta = -math.atan2((y2-y1),(x2-x1))
                     # theta = math.atan((y2-y1)/(x2-x1))
 
-                    if x1>x2:                   # converting from between -90 and 90 to between -180 and 180 (depending on direction of new point on x-axis)
-                        ogTheta = theta
-                        theta += 3.14
-                        if theta > 3.14:
-                            theta = -3.14 + ogTheta
+                    # if x1>x2:                   # converting from between -90 and 90 to between -180 and 180 (depending on direction of new point on x-axis)
+                    #     ogTheta = theta
+                    #     theta += 3.14
+                    #     if theta > 3.14:
+                    #         theta = -3.14 + ogTheta
 
 
                 curr_point.theta = theta
@@ -176,11 +177,12 @@ class WaypointList():
             curr_point.theta_dot = theta_dot
 
     def calc_dx_dy(self):
+        diff = 0-self.list[0].theta         # to adjust for default robot axises
         for waypoint in self.list:
             new_vel = waypoint.dis_to_next/TIME_STEP
             # new_vel = DESIRED_VEL
-            waypoint.dx = new_vel*math.cos(waypoint.theta)
-            waypoint.dy = new_vel*math.sin(waypoint.theta)
+            waypoint.dx = new_vel*math.cos(waypoint.theta+diff)
+            waypoint.dy = new_vel*math.sin(waypoint.theta+diff)
 
 
 # MAIN:

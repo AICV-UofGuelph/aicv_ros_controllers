@@ -50,7 +50,8 @@ def movebase_client():
     goal.target_pose.header.stamp = rospy.Time.now()
     goal.target_pose.pose.position.x = FILE['x'].to_numpy()[0]
     goal.target_pose.pose.position.y = FILE['y'].to_numpy()[0]
-    angle = FILE['theta'].to_numpy()[0]
+    angle = FILE['theta'].to_numpy()[0]# + math.radians(90)
+    # angle = 0
     (goal.target_pose.pose.orientation.x, goal.target_pose.pose.orientation.y, goal.target_pose.pose.orientation.z, goal.target_pose.pose.orientation.w) = (0.0000001,0.0000001,math.sin(angle/2), math.cos(angle/2))
 
     client.send_goal(goal)
@@ -93,32 +94,32 @@ def controller_pub(u, pub):
     # vel_msg.angular.z = 0 ######## HARDCODE TO 0 (for now)
     pub.publish(vel_msg)
 
-def linear_sat(x, val=0.4):
+def linear_sat(x, val=1):
     return min(val, max(-val, x))
 
 def theta_sat(x, val=0.1):
     return min(val, max(-val, x))
 
 # MAIN:
-waypoints_x = FILE['x'].to_numpy()[0:]
-waypoints_y = FILE['y'].to_numpy()[0:]
-theta = FILE['theta'].to_numpy()[0:]
-vel_x = FILE['x_dot'].to_numpy()[0:]
-vel_y = FILE['y_dot'].to_numpy()[0:]
-dtheta = FILE['theta_dot'].to_numpy()[0:]
+waypoints_x = FILE['x'].to_numpy()
+waypoints_y = FILE['y'].to_numpy()
+theta = FILE['theta'].to_numpy()
+vel_x = FILE['x_dot'].to_numpy()
+vel_y = FILE['y_dot'].to_numpy()
+dtheta = FILE['theta_dot'].to_numpy()
 num_points = np.shape(waypoints_x)[0]
 
 log('time step: ' + str(DT) + '\nnum points: ' + str(num_points))
 
 # define gains
-ki_x = 5.0 # x gains
-kp_x = 0.2
+ki_x = 0.0 # x gains
+kp_x = 1/DT
 
-ki_y = 5.0 # y gains
-kp_y = 0.2
+ki_y = ki_x # y gains
+kp_y = kp_x
 
-ki_theta = 0.05 # theta gains
-kp_theta = 1.0
+ki_theta = 0.0 # theta gains
+kp_theta = 0.0
 
 
 if __name__ == '__main__':
@@ -150,9 +151,23 @@ if __name__ == '__main__':
         desired_x = []
         desired_y = []
         desired_theta = []
+
+        # first point:
+        error = np.array([waypoints_x[0] - states[0], waypoints_y[0] - states[1], theta[0] - states[2]])
+        log('error:')
+        log(error)
+
+        net_error_x = 0.0
+        net_error_y = 0.0
+        net_error_theta = 0.0
         
         # iterate through all waypoints in text file
-        for itr in range(num_points):
+        for itr in range(1, num_points):
+
+            net_error_x += error[0]
+            net_error_y += error[1]
+            net_error_theta += error[2]
+
             log('itr: ' + str(itr))
             t1 = rospy.Time.now().to_sec()
 
@@ -166,7 +181,7 @@ if __name__ == '__main__':
 
             x_d = waypoints_x[itr]
             y_d = waypoints_y[itr]
-            theta_d = theta[itr]
+            theta_d = theta[itr]# + math.radians(90)
             x_dot_d = vel_x[itr]
             y_dot_d = vel_y[itr]
             theta_dot_d = dtheta[itr]
@@ -182,15 +197,14 @@ if __name__ == '__main__':
 
 
             # calculate the error for all states for this time step
-            error = np.array([x_d - states[0], y_d - states[1], theta_d - states[2],
-                                x_dot_d - states[3], y_dot_d - states[4], theta_dot_d - states[5]])
+            error = np.array([x_d - states[0], y_d - states[1], theta_d - states[2]])
 
             log('error:')
             log(error)
 
-            control_x = linear_sat(error[0]*ki_x + error[3]*kp_x) #control signal x
-            control_y = linear_sat(error[1]*ki_y + error[4]*kp_y) #control signal y
-            control_theta = theta_sat(error[2]*ki_theta + error[5]*kp_theta) #control signal theta
+            control_x = linear_sat(error[0]*kp_x + net_error_x*ki_x) #control signal x
+            control_y = linear_sat(error[1]*kp_y + net_error_y*ki_y) #control signal y
+            control_theta = theta_sat(error[2]*kp_theta + net_error_theta*ki_theta) #control signal theta
 
             log('control signals:')
             log(control_x)
@@ -232,7 +246,10 @@ if __name__ == '__main__':
         mse = np.square(np.subtract(actual_path_arr, desired_path_arr)).mean()
         rmse = math.sqrt(mse)
         log("RMSE: " + str(round(rmse, 4)))
-        np.savetxt(dir_name+"rmse.txt", [rmse], fmt='%.4f')
+
+        other_run_data = ["Time step: "+str(DT), "Number of waypoints: "+str(num_points), "RMSE: " + str(round(rmse, 4))]
+        # np.savetxt(dir_name+"rmse.txt", [rmse], fmt='%.4f')
+        np.savetxt(dir_name+"other_data.txt", other_run_data, fmt='%s')
         np.savetxt(dir_name+"actual_x.txt", actual_x, fmt='%.2f')
         np.savetxt(dir_name+"actual_y.txt", actual_y, fmt='%.2f')
         np.savetxt(dir_name+"actual_theta.txt", actual_theta, fmt='%.2f')
