@@ -126,6 +126,7 @@ class WaypointList():
         self.calc_thetas(resolution)
         self.calc_theta_dot()
         self.calc_dx_dy()
+        self.smoothen_theta()
 
     def remove_duplicates(self):
         skipped = 0
@@ -184,6 +185,28 @@ class WaypointList():
             waypoint.dx = new_vel*math.cos(waypoint.theta)#+diff)
             waypoint.dy = new_vel*math.sin(waypoint.theta)#+diff)
 
+    def smoothen_theta(self):
+        max_diff = math.radians(3)
+        largest_diff = None
+        while largest_diff == None or largest_diff > max_diff:
+
+            largest_diff = None
+            for i in range(len(self.list)):
+                if i == 0:
+                    idx = [i, i+1, i+2]
+                elif i == len(self.list)-1:
+                    idx = [i-2, i-1, i]
+                else:
+                    idx = [i-1, i, i+1]
+
+                self.list[i].theta = (self.list[idx[0]].theta + self.list[idx[1]].theta + self.list[idx[2]].theta)/3.0
+
+                if i != 0:
+                    diff = abs(self.list[i-1].theta-self.list[i].theta)
+
+                    if largest_diff == None or largest_diff < diff:
+                        largest_diff = diff
+            
 
 # MAIN:
 

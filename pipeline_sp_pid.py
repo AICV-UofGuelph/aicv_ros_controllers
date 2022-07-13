@@ -126,7 +126,7 @@ kd_y = kd_x # y gains
 kp_y = kp_x
 
 kd_theta = 1.0 # theta gains
-kp_theta = 4.0
+kp_theta = 1.0/DT
 
 
 if __name__ == '__main__':
