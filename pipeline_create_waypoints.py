@@ -177,12 +177,12 @@ class WaypointList():
             curr_point.theta_dot = theta_dot
 
     def calc_dx_dy(self):
-        diff = 0-self.list[0].theta         # to adjust for default robot axises
+        # diff = 0-self.list[0].theta         # to adjust for default robot axises
         for waypoint in self.list:
             new_vel = waypoint.dis_to_next/TIME_STEP
             # new_vel = DESIRED_VEL
-            waypoint.dx = new_vel*math.cos(waypoint.theta+diff)
-            waypoint.dy = new_vel*math.sin(waypoint.theta+diff)
+            waypoint.dx = new_vel*math.cos(waypoint.theta)#+diff)
+            waypoint.dy = new_vel*math.sin(waypoint.theta)#+diff)
 
 
 # MAIN:
