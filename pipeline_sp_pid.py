@@ -100,15 +100,12 @@ def theta_sat(x, val=0.1):
     return min(val, max(-val, x))
 
 def rotate(values, angle):
-    # origin = np.array([0,0,0])
-    # values = values - origin
     R = np.array([[math.cos(angle), -math.sin(angle), 0],           # rotation matrix (from https://www.mathworks.com/matlabcentral/answers/93554-how-can-i-rotate-a-set-of-points-in-a-plane-by-a-certain-angle-about-an-arbitrary-point)
                   [math.sin(angle),  math.cos(angle), 0],
                   [0,                0,               1]])
+
     new_values = np.matmul(values,R)
-    # new_values = new_values + origin
     return new_values[0], new_values[1], new_values[2]
-    # print(new_values)
 
 # MAIN:
 waypoints_x = FILE['x'].to_numpy()
@@ -137,22 +134,20 @@ if __name__ == '__main__':
         rospy.init_node('PID_Control', anonymous=True)
         log('node initialized')
 
-        #move robot to start point
+        # move robot to start point
         result = movebase_client()
 
         if result:
             rospy.loginfo("Goal execution done!")
 
-        #state_publisher = rospy.Publisher("/odometry/filtered_map", Odometry, queue_size=10)
+        # state_publisher = rospy.Publisher("/odometry/filtered_map", Odometry, queue_size=10)
         desired_state_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-
         log('pub initialized')
-        #get current robot states
+
+        # get current robot states
         states = get_states()
         log('got current states:')
         log(states)
-        log('state 0:')
-        log(states[0])
 
         actual_x = []
         actual_y = []
@@ -165,12 +160,6 @@ if __name__ == '__main__':
         x_d = waypoints_x[0]
         y_d = waypoints_y[0]
         theta_d = theta[0]
-
-        # rotate x, y, theta:
-        # x_d, y_d, theta_d = rotate(np.array([waypoints_x[0], waypoints_y[0], theta[0]]), 0-theta[0])
-
-        # rotate x, y, theta from robot frame to global frame:
-        # states[0], states[1], states[2] = rotate(np.array(states[0:3]), states[2]-theta_d)
 
         # first point:
         error = np.array([x_d - states[0], y_d - states[1], theta_d - states[2]])
@@ -195,9 +184,6 @@ if __name__ == '__main__':
             log('got current states:')
             log(states)
 
-            # rotate x, y, theta from robot frame to global frame:
-            # states[0], states[1], states[2] = rotate(np.array(states[0:3]), states[2]-theta_d)
-
             actual_x.append(states[0])
             actual_y.append(states[1])
             actual_theta.append(states[2])
@@ -209,9 +195,6 @@ if __name__ == '__main__':
             y_dot_d = vel_y[itr]
             theta_dot_d = dtheta[itr]
 
-            # rotate x, y, theta from global frame to robot frame:
-            # x_d, y_d, theta_d = rotate(np.array([x_d, y_d, theta_d]), 0-theta_d)
-
             desired_x.append(x_d)
             desired_y.append(y_d)
             desired_theta.append(theta_d)
@@ -220,7 +203,6 @@ if __name__ == '__main__':
             log('x: ' + str(x_d))
             log('y: ' + str(y_d))
             log('theta: ' + str(theta_d))
-
 
             # calculate the error for all states for this time step
             error = np.array([x_d - states[0], y_d - states[1], theta_d - states[2]])
@@ -237,14 +219,8 @@ if __name__ == '__main__':
             log(control_y)
             log(control_theta)
 
-            calculated_theta = math.atan2(control_y,control_x)
-
             # rotate x, y, theta from global frame to robot frame:
             control_x, control_y, control_theta = rotate(np.array([control_x, control_y, control_theta]), states[2])
-            log("rotation value: "+ str(calculated_theta))
-            log("rotation value: "+ str(states[2]))
-            log("rotation value: "+ str(theta_d))
-            log("rotation value: "+ str(calculated_theta-states[2]))
 
             controller_pub([control_x, control_y, control_theta], desired_state_publisher)
 
