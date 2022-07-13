@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # vs code stuff
-.vscode/browse.vc.db
+.vscode/*
 
 # test files
 paths/*
