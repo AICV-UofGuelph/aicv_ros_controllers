@@ -6,6 +6,12 @@ from std_msgs.msg import String
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 
+def normalize(x):
+    x = x % 360
+    if x < 0:
+        x += 360
+    return x
+
 def callback(data):
     x = data.pose.pose.position.x
     y = data.pose.pose.position.y
@@ -16,6 +22,8 @@ def callback(data):
         data.pose.pose.orientation.w
     )
     (roll, pitch, theta) = euler_from_quaternion(qt)
+
+    theta = normalize(theta)
 
     x_dot = data.twist.twist.linear.x
     y_dot = data.twist.twist.linear.y
@@ -28,7 +36,8 @@ def position_listener():
 
     rospy.init_node('position_listener', anonymous=True)
 
-    rospy.Subscriber("/robot/robotnik_base_control/odom", Odometry, callback)
+    # rospy.Subscriber("/robot/robotnik_base_control/odom", Odometry, callback)
+    rospy.Subscriber("/robot/amcl_pose", Odometry, callback)
 
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
