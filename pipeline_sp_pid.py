@@ -50,8 +50,7 @@ def movebase_client():
     goal.target_pose.header.stamp = rospy.Time.now()
     goal.target_pose.pose.position.x = FILE['x'].to_numpy()[0]
     goal.target_pose.pose.position.y = FILE['y'].to_numpy()[0]
-    angle = FILE['theta'].to_numpy()[0]# + math.radians(90)
-    # angle = 0
+    angle = FILE['theta'].to_numpy()[0]
     (goal.target_pose.pose.orientation.x, goal.target_pose.pose.orientation.y, goal.target_pose.pose.orientation.z, goal.target_pose.pose.orientation.w) = (0.0000001,0.0000001,math.sin(angle/2), math.cos(angle/2))
 
     client.send_goal(goal)
@@ -97,13 +96,21 @@ def controller_pub(u, pub):
 def linear_sat(x, val=1):
     return min(val, max(-val, x))
 
-def theta_sat(x, val=0.1):
+def theta_sat(x, val=1.0):
     return min(val, max(-val, x))
+
+def rotate(values, angle):
+    R = np.array([[math.cos(angle), -math.sin(angle), 0],           # rotation matrix (from https://www.mathworks.com/matlabcentral/answers/93554-how-can-i-rotate-a-set-of-points-in-a-plane-by-a-certain-angle-about-an-arbitrary-point)
+                  [math.sin(angle),  math.cos(angle), 0],
+                  [0,                0,               1]])
+
+    new_values = np.matmul(values,R)
+    return new_values[0], new_values[1], new_values[2]
 
 # MAIN:
 waypoints_x = FILE['x'].to_numpy()
 waypoints_y = FILE['y'].to_numpy()
-theta = FILE['theta'].to_numpy()
+theta_list = FILE['theta'].to_numpy()
 vel_x = FILE['x_dot'].to_numpy()
 vel_y = FILE['y_dot'].to_numpy()
 dtheta = FILE['theta_dot'].to_numpy()
@@ -112,14 +119,14 @@ num_points = np.shape(waypoints_x)[0]
 log('time step: ' + str(DT) + '\nnum points: ' + str(num_points))
 
 # define gains
-ki_x = 0.0 # x gains
+kd_x = 1.0 # x gains
 kp_x = 1/DT
 
-ki_y = ki_x # y gains
+kd_y = kd_x # y gains
 kp_y = kp_x
 
-ki_theta = 0.0 # theta gains
-kp_theta = 0.0
+kd_theta = 1.0 # theta gains
+kp_theta = 1.0/DT
 
 
 if __name__ == '__main__':
@@ -127,22 +134,20 @@ if __name__ == '__main__':
         rospy.init_node('PID_Control', anonymous=True)
         log('node initialized')
 
-        #move robot to start point
+        # move robot to start point
         result = movebase_client()
 
         if result:
             rospy.loginfo("Goal execution done!")
 
-        #state_publisher = rospy.Publisher("/odometry/filtered_map", Odometry, queue_size=10)
+        # state_publisher = rospy.Publisher("/odometry/filtered_map", Odometry, queue_size=10)
         desired_state_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-
         log('pub initialized')
-        #get current robot states
+
+        # get current robot states
         states = get_states()
         log('got current states:')
         log(states)
-        log('state 0:')
-        log(states[0])
 
         actual_x = []
         actual_y = []
@@ -152,21 +157,12 @@ if __name__ == '__main__':
         desired_y = []
         desired_theta = []
 
-        # first point:
-        error = np.array([waypoints_x[0] - states[0], waypoints_y[0] - states[1], theta[0] - states[2]])
-        log('error:')
-        log(error)
-
-        net_error_x = 0.0
-        net_error_y = 0.0
-        net_error_theta = 0.0
+        x_d = waypoints_x[0]
+        y_d = waypoints_y[0]
+        theta_d = theta_list[0]
         
         # iterate through all waypoints in text file
         for itr in range(1, num_points):
-
-            net_error_x += error[0]
-            net_error_y += error[1]
-            net_error_theta += error[2]
 
             log('itr: ' + str(itr))
             t1 = rospy.Time.now().to_sec()
@@ -179,9 +175,21 @@ if __name__ == '__main__':
             actual_y.append(states[1])
             actual_theta.append(states[2])
 
+            # current actual states:
+            x = states[0]
+            y = states[1]
+            theta = states[2]
+            x_dot = (x - actual_x[itr-1])/DT
+            y_dot = (y - actual_y[itr-1])/DT
+            theta_dot = (theta - actual_theta[itr-1])/DT
+
+            # desired states:
             x_d = waypoints_x[itr]
             y_d = waypoints_y[itr]
-            theta_d = theta[itr]# + math.radians(90)
+            if itr == 1 or itr == num_points-1:
+                theta_d = theta_list[itr]
+            else:
+                theta_d = (theta_list[itr-1] + theta_list[itr] + theta_list[itr+1])/3
             x_dot_d = vel_x[itr]
             y_dot_d = vel_y[itr]
             theta_dot_d = dtheta[itr]
@@ -195,21 +203,32 @@ if __name__ == '__main__':
             log('y: ' + str(y_d))
             log('theta: ' + str(theta_d))
 
-
             # calculate the error for all states for this time step
-            error = np.array([x_d - states[0], y_d - states[1], theta_d - states[2]])
+            # error = np.array([x_d - states[0], y_d - states[1], theta_d - states[2]])
+
+            error = np.array([
+                            x_d - x, # x position error, error[0]
+                            y_d - y, # y position error, error[1]
+                            theta_d - theta, # theta position error, error[2]
+                            x_dot_d - x_dot, # x_dot error, error[3]
+                            y_dot_d - y_dot, # y_dot error, error[4]
+                            theta_dot_d - theta_dot # theta_dot error, error[5]
+                            ])
 
             log('error:')
             log(error)
 
-            control_x = linear_sat(error[0]*kp_x + net_error_x*ki_x) #control signal x
-            control_y = linear_sat(error[1]*kp_y + net_error_y*ki_y) #control signal y
-            control_theta = theta_sat(error[2]*kp_theta + net_error_theta*ki_theta) #control signal theta
+            control_x = linear_sat(error[0]*kp_x + error[3]*kd_x) #control signal x
+            control_y = linear_sat(error[1]*kp_y + error[4]*kd_y) #control signal y
+            control_theta = theta_sat(error[2]*kp_theta + error[5]*kd_theta) #control signal theta
 
             log('control signals:')
             log(control_x)
             log(control_y)
             log(control_theta)
+
+            # rotate x, y, theta from global frame to robot frame:
+            control_x, control_y, control_theta = rotate(np.array([control_x, control_y, control_theta]), states[2])
 
             controller_pub([control_x, control_y, control_theta], desired_state_publisher)
 
