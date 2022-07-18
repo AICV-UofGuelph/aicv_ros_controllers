@@ -5,6 +5,7 @@ import rospy
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseWithCovarianceStamped
 import pandas as pd
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
@@ -39,7 +40,8 @@ def movebase_client():
 
 def get_states():
     log('waiting for odom message')
-    data = rospy.wait_for_message("/robot/robotnik_base_control/odom", Odometry)
+    # data = rospy.wait_for_message("/robot/robotnik_base_control/odom", Odometry)
+    data = rospy.wait_for_message("/robot/amcl_pose", PoseWithCovarianceStamped)
     log('got odom message')
 
     x = data.pose.pose.position.x
