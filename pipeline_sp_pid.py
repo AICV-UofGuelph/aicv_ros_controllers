@@ -3,7 +3,7 @@ import os, sys, math
 import getopt, shutil
 import numpy as np
 import rospy
-from nav_msgs.msg import Odometry
+# from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseWithCovarianceStamped
@@ -11,10 +11,11 @@ import pandas as pd
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 import matplotlib.pyplot as plt
-import tf
-import tf2_ros
-import tf2_geometry_msgs
-from tf2_ros import TransformListener
+# import tf
+# import tf2_ros
+# import tf2_geometry_msgs
+# import geometry_msgs
+# from tf2_ros import TransformListener
 
 DEBUG = True                    # set true to print error messages
 
@@ -66,55 +67,74 @@ def movebase_client():
     else:
         return client.get_result()
 
- # got function code from https://answers.ros.org/question/323075/transform-the-coordinate-frame-of-a-pose-from-one-fixed-frame-to-another/
-def transform_pose(input_pose, from_frame, to_frame):
-    # **Assuming /tf2 topic is being broadcasted
-    # tf_buffer = tf2_ros.Buffer()
-    listener = tf.TransformListener()
+#  # got function code from https://answers.ros.org/question/323075/transform-the-coordinate-frame-of-a-pose-from-one-fixed-frame-to-another/
+# def transform_pose(input_pose, from_frame, to_frame):
+#     # **Assuming /tf2 topic is being broadcasted
+#     # tf_buffer = tf2_ros.Buffer()
+#     listener = tf.TransformListener()    
+    
+#     time = listener.getLatestCommonTime(to_frame, from_frame)
 
-    new_pose = listener.transformPose(to_frame, input_pose)
-    return new_pose
+#     stamped_pose = geometry_msgs.msg.PoseStamped()
+#     stamped_pose.header.frame_id = from_frame
+#     stamped_pose.pose = input_pose
+#     stamped_pose.header.stamp = time
 
-    pose_stamped = tf2_geometry_msgs.PoseStamped()
-    pose_stamped.pose = input_pose
-    pose_stamped.header.frame_id = from_frame
-    pose_stamped.header.stamp = rospy.Time(0)
-    try:
-        # ** It is important to wait for the listener to start listening. Hence the rospy.Duration(1)
-        output_pose_stamped = listener.transformPose(to_frame, pose_stamped)#, rospy.Duration(1))
-        return output_pose_stamped.pose
+#     new_pose = listener.transformPose(to_frame, stamped_pose)
+#     return new_pose
 
-    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-        raise
+#     listener = tf.TransformListener()    
+
+#     new_message = PoseWithCovarianceStamped()
+#     new_message.pose = input_pose.pose
+#     new_message.header = input_pose.header
+
+#     new_pose = listener.transformPose(to_frame, new_message)
+#     return new_pose
+
+#     tf_buffer = tf2_ros.Buffer()
+#     listener = TransformListener(tf_buffer)  
+
+#     pose_stamped = tf2_geometry_msgs.PoseStamped()
+#     pose_stamped.pose = input_pose.pose.pose
+#     pose_stamped.header.frame_id = from_frame
+#     pose_stamped.header.stamp = rospy.Time(0)
+#     try:
+#         # ** It is important to wait for the listener to start listening. Hence the rospy.Duration(1)
+#         output_pose_stamped = tf_buffer.transform(pose_stamped, to_frame, rospy.Duration(1))
+#         return output_pose_stamped.pose
+
+#     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+#         raise
 
 def get_states():
     log('waiting for odom message')
-    data = rospy.wait_for_message("/robot/robotnik_base_control/odom", Odometry)
-    # data = rospy.wait_for_message("/robot/amcl_pose", PoseWithCovarianceStamped)
+    # data = rospy.wait_for_message("/robot/robotnik_base_control/odom", Odometry)
+    data = rospy.wait_for_message("/robot/amcl_pose", PoseWithCovarianceStamped)
     log('got odom message')
 
-    # x = data.pose.pose.position.x
-    # y = data.pose.pose.position.y
-    # qt = (
-    #     data.pose.pose.orientation.x,
-    #     data.pose.pose.orientation.y,
-    #     data.pose.pose.orientation.z,
-    #     data.pose.pose.orientation.w
-    # )
-    # (roll, pitch, theta) = euler_from_quaternion(qt)
-
-    # states wrt odom frame must be tranformed so that they are wrt to amcl frame (map frame)
-    new_pose = transform_pose(data, "robot_odom", "robot_map")
-
-    x = new_pose.position.x
-    y = new_pose.position.y
+    x = data.pose.pose.position.x
+    y = data.pose.pose.position.y
     qt = (
-        new_pose.orientation.x,
-        new_pose.orientation.y,
-        new_pose.orientation.z,
-        new_pose.orientation.w
+        data.pose.pose.orientation.x,
+        data.pose.pose.orientation.y,
+        data.pose.pose.orientation.z,
+        data.pose.pose.orientation.w
     )
     (roll, pitch, theta) = euler_from_quaternion(qt)
+
+    # states wrt odom frame must be tranformed so that they are wrt to amcl frame (map frame)
+    # new_pose = transform_pose(data, "robot_odom", "robot_map")
+
+    # x = new_pose.position.x
+    # y = new_pose.position.y
+    # qt = (
+    #     new_pose.orientation.x,
+    #     new_pose.orientation.y,
+    #     new_pose.orientation.z,
+    #     new_pose.orientation.w
+    # )
+    # (roll, pitch, theta) = euler_from_quaternion(qt)
 
     # return np.array([x,y,theta,x_dot,y_dot,theta_dot])
     return np.array([x,y,theta])
@@ -153,20 +173,6 @@ dtheta = FILE['theta_dot'].to_numpy()
 num_points = np.shape(waypoints_x)[0]
 
 log('time step: ' + str(DT) + '\nnum points: ' + str(num_points))
-
-# # define gains
-# ki_x = 0 # x gains
-# kp_x = 2
-
-# ki_y = 0.0 # y gains
-# kp_y = 2
-# # ki_y = 1.0 # y gains
-# # kp_y = 0.2
-
-# ki_theta = 0.0 # theta gains
-# kp_theta = 0.0
-# # ki_theta = 0.05 # theta gains
-# # kp_theta = 1.0
 
 # define gains
 kd_x = 1.0 # x gains

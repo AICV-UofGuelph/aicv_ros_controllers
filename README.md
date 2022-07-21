@@ -19,3 +19,5 @@ $ python pipeline_sp_pid.py `python pipeline_create_waypoints.py file_folder [-t
 
 - if not given, `timestep` variable will be set to 0.2
 - if not given, `folder_name` variable will be set to run_[num of files in 'run_data/' directory]
+- use Python 2.7 to run
+- make amcl values in config file smaller before using
