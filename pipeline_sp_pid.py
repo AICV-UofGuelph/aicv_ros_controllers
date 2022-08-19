@@ -47,7 +47,7 @@ def log(s):
         print(s)
 
 def movebase_client():
-    log('moving to start point')
+    
     client = actionlib.SimpleActionClient('/robot/move_base',MoveBaseAction)
     client.wait_for_server()
 
@@ -58,7 +58,7 @@ def movebase_client():
     goal.target_pose.pose.position.y = FILE['y'].to_numpy()[0]
     angle = FILE['theta'].to_numpy()[0]
     (goal.target_pose.pose.orientation.x, goal.target_pose.pose.orientation.y, goal.target_pose.pose.orientation.z, goal.target_pose.pose.orientation.w) = (0.0000001,0.0000001,math.sin(angle/2), math.cos(angle/2))
-
+    log("moving to start point "+str(goal.target_pose.pose.position.x)+", "+str(goal.target_pose.pose.position.y))
     client.send_goal(goal)
     wait = client.wait_for_result()
     if not wait:
@@ -346,6 +346,8 @@ if __name__ == '__main__':
         for i in range(len(desired_theta)):
             x_vals_theta.append(i)
 
+        plt.xlim([0,10])
+        plt.ylim([0,10])
         plt.plot(actual_x, actual_y, label="Actual")
         plt.plot(desired_x, desired_y, label="Desired")
         plt.legend()
