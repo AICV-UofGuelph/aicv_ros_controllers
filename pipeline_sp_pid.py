@@ -3,13 +3,19 @@ import os, sys, math
 import getopt, shutil
 import numpy as np
 import rospy
-from nav_msgs.msg import Odometry
+# from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import PoseWithCovarianceStamped
 import pandas as pd
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 import matplotlib.pyplot as plt
+# import tf
+# import tf2_ros
+# import tf2_geometry_msgs
+# import geometry_msgs
+# from tf2_ros import TransformListener
 
 DEBUG = True                    # set true to print error messages
 
@@ -41,7 +47,7 @@ def log(s):
         print(s)
 
 def movebase_client():
-    log('moving to start point')
+    
     client = actionlib.SimpleActionClient('/robot/move_base',MoveBaseAction)
     client.wait_for_server()
 
@@ -52,7 +58,7 @@ def movebase_client():
     goal.target_pose.pose.position.y = FILE['y'].to_numpy()[0]
     angle = FILE['theta'].to_numpy()[0]
     (goal.target_pose.pose.orientation.x, goal.target_pose.pose.orientation.y, goal.target_pose.pose.orientation.z, goal.target_pose.pose.orientation.w) = (0.0000001,0.0000001,math.sin(angle/2), math.cos(angle/2))
-
+    log("moving to start point "+str(goal.target_pose.pose.position.x)+", "+str(goal.target_pose.pose.position.y))
     client.send_goal(goal)
     wait = client.wait_for_result()
     if not wait:
@@ -61,9 +67,50 @@ def movebase_client():
     else:
         return client.get_result()
 
+#  # got function code from https://answers.ros.org/question/323075/transform-the-coordinate-frame-of-a-pose-from-one-fixed-frame-to-another/
+# def transform_pose(input_pose, from_frame, to_frame):
+#     # **Assuming /tf2 topic is being broadcasted
+#     # tf_buffer = tf2_ros.Buffer()
+#     listener = tf.TransformListener()    
+    
+#     time = listener.getLatestCommonTime(to_frame, from_frame)
+
+#     stamped_pose = geometry_msgs.msg.PoseStamped()
+#     stamped_pose.header.frame_id = from_frame
+#     stamped_pose.pose = input_pose
+#     stamped_pose.header.stamp = time
+
+#     new_pose = listener.transformPose(to_frame, stamped_pose)
+#     return new_pose
+
+#     listener = tf.TransformListener()    
+
+#     new_message = PoseWithCovarianceStamped()
+#     new_message.pose = input_pose.pose
+#     new_message.header = input_pose.header
+
+#     new_pose = listener.transformPose(to_frame, new_message)
+#     return new_pose
+
+#     tf_buffer = tf2_ros.Buffer()
+#     listener = TransformListener(tf_buffer)  
+
+#     pose_stamped = tf2_geometry_msgs.PoseStamped()
+#     pose_stamped.pose = input_pose.pose.pose
+#     pose_stamped.header.frame_id = from_frame
+#     pose_stamped.header.stamp = rospy.Time(0)
+#     try:
+#         # ** It is important to wait for the listener to start listening. Hence the rospy.Duration(1)
+#         output_pose_stamped = tf_buffer.transform(pose_stamped, to_frame, rospy.Duration(1))
+#         return output_pose_stamped.pose
+
+#     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+#         raise
+
 def get_states():
     log('waiting for odom message')
-    data = rospy.wait_for_message("/robot/robotnik_base_control/odom", Odometry)
+    # data = rospy.wait_for_message("/robot/robotnik_base_control/odom", Odometry)
+    data = rospy.wait_for_message("/robot/amcl_pose", PoseWithCovarianceStamped)
     log('got odom message')
 
     x = data.pose.pose.position.x
@@ -76,11 +123,21 @@ def get_states():
     )
     (roll, pitch, theta) = euler_from_quaternion(qt)
 
-    x_dot = data.twist.twist.linear.x
-    y_dot = data.twist.twist.linear.y
-    theta_dot = data.twist.twist.angular.z
+    # states wrt odom frame must be tranformed so that they are wrt to amcl frame (map frame)
+    # new_pose = transform_pose(data, "robot_odom", "robot_map")
 
-    return np.array([x,y,theta,x_dot,y_dot,theta_dot])
+    # x = new_pose.position.x
+    # y = new_pose.position.y
+    # qt = (
+    #     new_pose.orientation.x,
+    #     new_pose.orientation.y,
+    #     new_pose.orientation.z,
+    #     new_pose.orientation.w
+    # )
+    # (roll, pitch, theta) = euler_from_quaternion(qt)
+
+    # return np.array([x,y,theta,x_dot,y_dot,theta_dot])
+    return np.array([x,y,theta])
 
 def controller_pub(u, pub):
     vel_msg = Twist()
@@ -90,10 +147,9 @@ def controller_pub(u, pub):
     vel_msg.angular.x = 0
     vel_msg.angular.y = 0
     vel_msg.angular.z = u[2]
-    # vel_msg.angular.z = 0 ######## HARDCODE TO 0 (for now)
     pub.publish(vel_msg)
 
-def linear_sat(x, val=1):
+def linear_sat(x, val=1.0):
     return min(val, max(-val, x))
 
 def theta_sat(x, val=1.0):
@@ -107,10 +163,10 @@ def rotate(values, angle):
     new_values = np.matmul(values,R)
     return new_values[0], new_values[1], new_values[2]
 
-# MAIN:
+
 waypoints_x = FILE['x'].to_numpy()
 waypoints_y = FILE['y'].to_numpy()
-theta_list = FILE['theta'].to_numpy()
+waypoints_theta = FILE['theta'].to_numpy()
 vel_x = FILE['x_dot'].to_numpy()
 vel_y = FILE['y_dot'].to_numpy()
 dtheta = FILE['theta_dot'].to_numpy()
@@ -120,7 +176,7 @@ log('time step: ' + str(DT) + '\nnum points: ' + str(num_points))
 
 # define gains
 kd_x = 1.0 # x gains
-kp_x = 1/DT
+kp_x = 1.0/DT
 
 kd_y = kd_x # y gains
 kp_y = kp_x
@@ -159,7 +215,7 @@ if __name__ == '__main__':
 
         x_d = waypoints_x[0]
         y_d = waypoints_y[0]
-        theta_d = theta_list[0]
+        theta_d = waypoints_theta[0]
         
         # iterate through all waypoints in text file
         for itr in range(1, num_points):
@@ -186,10 +242,7 @@ if __name__ == '__main__':
             # desired states:
             x_d = waypoints_x[itr]
             y_d = waypoints_y[itr]
-            if itr == 1 or itr == num_points-1:
-                theta_d = theta_list[itr]
-            else:
-                theta_d = (theta_list[itr-1] + theta_list[itr] + theta_list[itr+1])/3
+            theta_d = waypoints_theta[itr]
             x_dot_d = vel_x[itr]
             y_dot_d = vel_y[itr]
             theta_dot_d = dtheta[itr]
@@ -260,6 +313,14 @@ if __name__ == '__main__':
             shutil.rmtree(dir_name)
         os.mkdir(dir_name)
 
+        # giving variables better names:
+        # actual_x = x_list
+        # actual_y = y_list
+        # actual_theta = theta_list
+        # desired_x = xd_list
+        # desired_y = yd_list
+        # desired_theta = thetad_list
+
         actual_path_arr = list(zip(actual_x, actual_y))
         desired_path_arr = list(zip(desired_x, desired_y))
         mse = np.square(np.subtract(actual_path_arr, desired_path_arr)).mean()
@@ -285,6 +346,8 @@ if __name__ == '__main__':
         for i in range(len(desired_theta)):
             x_vals_theta.append(i)
 
+        plt.xlim([0,10])
+        plt.ylim([0,10])
         plt.plot(actual_x, actual_y, label="Actual")
         plt.plot(desired_x, desired_y, label="Desired")
         plt.legend()

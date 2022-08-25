@@ -142,3 +142,6 @@ waypoints/*
 map_40x40_dense/*
 run_data/*
 world_3/*
+8x12_path*
+path_*/
+map_*/
