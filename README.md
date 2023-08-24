@@ -1,6 +1,7 @@
 # sp_controller
-controllers for rbkairos robots
+This ROS package contains the PI trajectory tracking controller used by the RB-Kairos robot. The PI controller itself is ```sp_pid.py```.
 
+Running the controller relies on a list of seperated coordinate points to follow. To generate these points at the correct distance apart so that the robot runs at the desired speed, ```pipeline_sp_pid.py``` is used.
 ## pipeline_sp_pid.py
 
 ### Compile/Run
