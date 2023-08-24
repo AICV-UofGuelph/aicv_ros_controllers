@@ -1,16 +1,17 @@
-# sp_controller
-controllers for rbkairos robots
+# aicv_ros_controller
+This ROS package contains the PI trajectory tracking controller used by the RB-Kairos robot. The PI controller itself is ```pi_controller.py```.
 
-## pipeline_sp_pid.py
+Running the controller relies on a list of seperated coordinate points to follow. To generate these points at the correct distance apart so that the robot runs at the desired speed, ```pipeline_pi_controller.py``` is used.
+## pipeline_pi_controller.py
 
 ### Compile/Run
 ```
-$ python pipeline_sp_pid.py csv_file [-t timestep] [-f folder_name]
+$ python pipeline_pi_controller.py csv_file [-t timestep] [-f folder_name]
 ```
 
 ### Running with pipeline_create_waypoints.py
 ```
-$ python pipeline_sp_pid.py `python pipeline_create_waypoints.py file_folder [-t timestep] [-f folder_name]`
+$ python pipeline_pi_controller.py `python pipeline_create_waypoints.py file_folder [-t timestep] [-f folder_name]`
 ```
 - where `file_folder` is name of file that contains a path file, map file, and yaml file
 - where `folder_name` is the name of the directory the run data will be saved in 
